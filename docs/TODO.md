@@ -100,6 +100,7 @@ Post-hoc delete + sweep · Chrome + Firefox desktop, no Safari · four strict ru
   `npm run release` asserts `package.json` and `src/manifest.json` agree on the version, builds both targets, packages `dist/release/histora-<version>-chrome.zip` and `.xpi` with the manifest at the archive root, and writes bare-name `SHA256SUMS`; `sha256sum -c` passes from `dist/release/`.
 - [x] `README.md`: install steps for both browsers, what the extension cannot do, version/checksum table
 - [ ] AMO submission decided (listed vs unlisted) and uploaded; the release asset is the AMO-signed file
+- [x] Extension icon taken from the wordmark (the H only) at 16/32/48/128, wired to `icons` and `action.default_icon`; the source image is not committed
 - [x] Version string bumped in one place and visible in the popup and audit header
 
   `package.json` is the source; `scripts/release.mjs` fails the build if `src/manifest.json` drifts. The popup header and the options settings section both read the manifest version.
