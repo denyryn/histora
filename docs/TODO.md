@@ -117,6 +117,16 @@ Post-hoc delete + sweep · Chrome + Firefox desktop, no Safari · four strict ru
 
 **Acceptance:** `tests/lock.test.ts` (10 cases) and `/tmp/opencode/e2e-lock.mjs` (18 checks: set, reload-lock, wrong/right passcode, wrong/right backup code, download contents, clipboard result, passcode off after recovery) pass against the built extension.
 
+## M8 — Options modals
+
+- [x] `src/components/ui/dialog.tsx` over `@radix-ui/react-dialog`; focus trap, initial focus on the first field, focus returned to the control that opened it, labelled title and description
+- [x] Add rule opens in a dialog from the Rules header and the empty state; it stays open after saving so the cleanup note is readable, and `Done` closes it
+- [x] Backup code shows in a dialog that ignores Escape and outside clicks and has no close button — only `I saved it` dismisses it
+- [x] Clearing the audit log and turning the passcode off ask in a confirm dialog, focusing the safe choice
+- [x] Deliberately not modal: deleting one rule, the onboarding notice
+
+**Acceptance:** `/tmp/opencode/e2e-modals.mjs` (23 checks) plus the updated `e2e-m4.mjs` (35) and `e2e-lock.mjs` (18) pass against the built extension.
+
 ## Manual verification matrix (M5 and every release)
 
 Chrome column: `/tmp/opencode/e2e-matrix.mjs` against the built extension, 10 PASS / 0 FAIL / 5 SKIP. Firefox column: not run yet — needs the signed XPI path.

@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {api} from '../history/api'
 import {hasSeenOnboarding} from '../settings/service'
 import {hasPasscode} from '../settings/lock'
@@ -24,6 +24,8 @@ export default function OptionsApp() {
   const [loadingRules, setLoadingRules] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [auditKey, setAuditKey] = useState(0)
+  const [addRuleOpen, setAddRuleOpen] = useState(false)
+  const addRuleTrigger = useRef<HTMLElement | null>(null)
 
   const version = api.runtime.getManifest().version
 
@@ -124,9 +126,19 @@ export default function OptionsApp() {
         error={rulesError}
         loading={loadingRules}
         onRules={acceptRules}
+        onAddRule={(trigger) => {
+          addRuleTrigger.current = trigger
+          setAddRuleOpen(true)
+        }}
       />
 
-      <AddRuleForm onSaved={acceptRules} onCleaned={() => setAuditKey((key) => key + 1)} />
+      <AddRuleForm
+        open={addRuleOpen}
+        onOpenChange={setAddRuleOpen}
+        onSaved={acceptRules}
+        onCleaned={() => setAuditKey((key) => key + 1)}
+        returnFocus={addRuleTrigger}
+      />
 
       <AuditSection version={version} refreshKey={auditKey} />
 

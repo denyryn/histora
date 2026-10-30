@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react'
+import {useEffect, useState} from 'react'
 import {getDomain} from 'tldts'
 import type {Rule, RuleKind} from '../core/match'
 import {validateRule} from '../core/rules'
@@ -7,6 +7,15 @@ import {api} from '../history/api'
 import {cleanupNote} from '../ui/cleanup'
 import {shortUrl} from '../ui/display'
 import {Button} from '../components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../components/ui/dialog'
 import {Input} from '../components/ui/input'
 import {Label} from '../components/ui/label'
 import {cn} from '../lib/utils'
@@ -98,11 +107,17 @@ const correctionFor = (kind: RuleKind, raw: string): {value: string; label: stri
 type PreviewState = {key: string; data: Preview}
 
 export default function AddRuleForm({
+  open,
+  onOpenChange,
   onSaved,
-  onCleaned
+  onCleaned,
+  returnFocus
 }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onSaved: (rules: Rule[]) => void
   onCleaned: () => void
+  returnFocus: {current: HTMLElement | null}
 }) {
   const [kind, setKind] = useState<RuleKind>('domain')
   const [value, setValue] = useState('')
@@ -112,7 +127,8 @@ export default function AddRuleForm({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
-  const input = useRef<HTMLInputElement>(null)
+
+  const focusValue = () => document.getElementById('rule-value')?.focus()
 
   const selected = KINDS.find((entry) => entry.value === kind) ?? KINDS[0]
 
@@ -172,7 +188,7 @@ export default function AddRuleForm({
     setValue('')
     setNote(null)
     setSaveError(null)
-    input.current?.focus()
+    focusValue()
   }
 
   const save = async () => {
@@ -196,7 +212,7 @@ export default function AddRuleForm({
       onCleaned()
       setValue('')
       setPreview(null)
-      input.current?.focus()
+      focusValue()
     } catch (cause) {
       setSaveError(errorText(cause, 'The rule could not be added. Try again.'))
     } finally {
@@ -208,160 +224,194 @@ export default function AddRuleForm({
   const slugHosts =
     kind === 'slug' ? Array.from(new Set(hits.map((hit) => hostOf(hit.url)))) : []
 
+  const changeOpen = (next: boolean) => {
+    if (!next) {
+      setNote(null)
+      setSaveError(null)
+    }
+
+    onOpenChange(next)
+  }
+
   return (
-    <section className="mt-8 border-t border-border pt-5" aria-labelledby="add-heading">
-      <h2 id="add-heading" className="text-lg">
-        Add a rule
-      </h2>
+    <Dialog open={open} onOpenChange={changeOpen}>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          const content = event.currentTarget as HTMLElement | null
+          content?.querySelector<HTMLElement>('#rule-value')?.focus()
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          // The empty-state trigger unmounts once the first rule exists.
+          const target = returnFocus.current?.isConnected
+            ? returnFocus.current
+            : document.getElementById('add-rule-trigger')
 
-      <fieldset className="mt-3">
-        <legend className="text-sm text-muted-foreground">What should it match?</legend>
+          target?.focus()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>Add a rule</DialogTitle>
+          <DialogDescription>
+            Matching pages are removed from your history.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          {KINDS.map((entry) => (
-            <label
-              key={entry.value}
-              className={cn(
-                'relative block cursor-pointer rounded-lg border px-3 py-2 transition-colors duration-150 motion-reduce:transition-none',
-                'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
-                kind === entry.value
-                  ? 'border-primary bg-muted'
-                  : 'border-border hover:bg-accent'
-              )}
-            >
-              <input
-                type="radio"
-                name="rule-kind"
-                value={entry.value}
-                checked={kind === entry.value}
-                onChange={() => chooseKind(entry.value)}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-              <span className="block text-sm font-medium">{entry.label}</span>
-              <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
-                {entry.example}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+        <fieldset>
+          <legend className="text-sm text-muted-foreground">What should it match?</legend>
 
-      <div className="mt-4 grid gap-1.5">
-        <Label htmlFor="rule-value">{selected.field}</Label>
-        <Input
-          id="rule-value"
-          ref={input}
-          value={value}
-          placeholder={selected.placeholder}
-          spellCheck={false}
-          autoComplete="off"
-          aria-describedby="rule-value-hint"
-          onChange={(event) => {
-            setValue(event.target.value)
-            setNote(null)
-            setSaveError(null)
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && ready) {
-              event.preventDefault()
-              void save()
-            }
-          }}
-        />
-        <p id="rule-value-hint" className="text-xs text-muted-foreground">
-          {selected.hint}
-        </p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {KINDS.map((entry) => (
+              <label
+                key={entry.value}
+                className={cn(
+                  'relative block cursor-pointer rounded-lg border px-3 py-2 transition-colors duration-150 motion-reduce:transition-none',
+                  'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
+                  kind === entry.value
+                    ? 'border-primary bg-muted'
+                    : 'border-border hover:bg-accent'
+                )}
+              >
+                <input
+                  type="radio"
+                  name="rule-kind"
+                  value={entry.value}
+                  checked={kind === entry.value}
+                  onChange={() => chooseKind(entry.value)}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+                <span className="block text-sm font-medium">{entry.label}</span>
+                <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
+                  {entry.example}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-        {correction ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-1 justify-self-start"
-            onClick={() => {
-              setValue(correction.value)
+        <div className="grid gap-1.5">
+          <Label htmlFor="rule-value">{selected.field}</Label>
+          <Input
+            id="rule-value"
+            value={value}
+            placeholder={selected.placeholder}
+            spellCheck={false}
+            autoComplete="off"
+            aria-describedby="rule-value-hint"
+            onChange={(event) => {
+              setValue(event.target.value)
               setNote(null)
               setSaveError(null)
             }}
-          >
-            {correction.label}
-          </Button>
-        ) : null}
-      </div>
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && ready) {
+                event.preventDefault()
+                void save()
+              }
+            }}
+          />
+          <p id="rule-value-hint" className="text-xs text-muted-foreground">
+            {selected.hint}
+          </p>
 
-      {kind === 'slug' ? (
-        <p className="mt-3 rounded-md border border-warn-foreground/25 bg-warn-surface px-3 py-2 text-sm text-warn-foreground">
-          A path rule applies to every site with this path, not just the one you have open.
-        </p>
-      ) : null}
-
-      {value.trim() ? (
-        <div className="mt-4 rounded-lg border border-border bg-muted px-4 py-3" aria-live="polite">
-          <h3 className="text-sm font-medium">Preview</h3>
-
-          {previewing ? (
-            <p className="mt-1 text-sm text-muted-foreground">Checking your history.</p>
-          ) : previewError ? (
-            <p className="mt-1 text-sm text-fail-foreground">{previewError}</p>
-          ) : preview ? (
-            <>
-              {kind === 'slug' && slugHosts.length > 0 ? (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground">This path was seen on</p>
-                  <p className="mt-0.5 break-words text-sm">{slugHosts.join(', ')}</p>
-                </div>
-              ) : null}
-
-              <p className="mt-2 text-sm">
-                {preview.data.count === 0
-                  ? 'Nothing in your history matches this rule yet. It still applies to future visits.'
-                  : preview.data.count === 1
-                    ? 'This rule matches 1 history entry.'
-                    : `This rule matches ${preview.data.count} history entries.`}
-              </p>
-
-              {preview.data.siblings.length > 0 ? (
-                <div className="mt-3">
-                  <p className="text-xs text-muted-foreground">This site was also seen on</p>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {preview.data.siblings.map((host) => (
-                      <Button
-                        key={host}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setKind('subdomain')
-                          setValue(host)
-                          setNote(null)
-                          setSaveError(null)
-                        }}
-                      >
-                        Never keep {host}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {hits.length > 0 ? (
-                <ul className="mt-2 space-y-1">
-                  {hits.map((hit) => (
-                    <li key={hit.url} className="truncate font-mono text-xs text-muted-foreground">
-                      {shortUrl(hit.url)}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </>
+          {correction ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-1 justify-self-start"
+              onClick={() => {
+                setValue(correction.value)
+                setNote(null)
+                setSaveError(null)
+              }}
+            >
+              {correction.label}
+            </Button>
           ) : null}
         </div>
-      ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button type="button" disabled={!ready} onClick={() => void save()}>
-          {saving ? 'Adding rule' : 'Add rule'}
-        </Button>
+        {kind === 'slug' ? (
+          <p className="rounded-md border border-warn-foreground/25 bg-warn-surface px-3 py-2 text-sm text-warn-foreground">
+            A path rule applies to every site with this path, not just the one you have open.
+          </p>
+        ) : null}
+
+        {value.trim() ? (
+          <div className="rounded-lg border border-border bg-muted px-4 py-3" aria-live="polite">
+            <h3 className="text-sm font-medium">Preview</h3>
+
+            {previewing ? (
+              <p className="mt-1 text-sm text-muted-foreground">Checking your history.</p>
+            ) : previewError ? (
+              <p className="mt-1 text-sm text-fail-foreground">{previewError}</p>
+            ) : preview ? (
+              <>
+                {kind === 'slug' && slugHosts.length > 0 ? (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground">This path was seen on</p>
+                    <p className="mt-0.5 break-words text-sm">{slugHosts.join(', ')}</p>
+                  </div>
+                ) : null}
+
+                <p className="mt-2 text-sm">
+                  {preview.data.count === 0
+                    ? 'Nothing in your history matches this rule yet. It still applies to future visits.'
+                    : preview.data.count === 1
+                      ? 'This rule matches 1 history entry.'
+                      : `This rule matches ${preview.data.count} history entries.`}
+                </p>
+
+                {preview.data.siblings.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-xs text-muted-foreground">This site was also seen on</p>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {preview.data.siblings.map((host) => (
+                        <Button
+                          key={host}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setKind('subdomain')
+                            setValue(host)
+                            setNote(null)
+                            setSaveError(null)
+                          }}
+                        >
+                          Never keep {host}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {hits.length > 0 ? (
+                  <ul className="mt-2 space-y-1">
+                    {hits.map((hit) => (
+                      <li key={hit.url} className="truncate font-mono text-xs text-muted-foreground">
+                        {shortUrl(hit.url)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {saveError ? (
+          <p className="text-sm text-fail-foreground" role="alert">
+            {saveError}
+          </p>
+        ) : null}
+
+        {note ? (
+          <p className="text-sm text-ok-foreground" role="status">
+            {note}
+          </p>
+        ) : null}
 
         {value.trim() && !ready && !previewError && !saving ? (
           <p className="text-xs text-muted-foreground">
@@ -370,19 +420,18 @@ export default function AddRuleForm({
               : 'The preview must finish before you can save.'}
           </p>
         ) : null}
-      </div>
 
-      {saveError ? (
-        <p className="mt-2 text-sm text-fail-foreground" role="alert">
-          {saveError}
-        </p>
-      ) : null}
-
-      {note ? (
-        <p className="mt-2 text-sm text-ok-foreground" role="status">
-          {note}
-        </p>
-      ) : null}
-    </section>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="ghost" disabled={saving}>
+              Done
+            </Button>
+          </DialogClose>
+          <Button type="button" disabled={!ready} onClick={() => void save()}>
+            {saving ? 'Adding rule' : 'Add rule'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

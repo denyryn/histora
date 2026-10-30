@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {Trash2} from 'lucide-react'
+import {Plus, Trash2} from 'lucide-react'
 import {ruleLabel} from '../core/format'
 import type {Rule} from '../core/match'
 import {removeRule, setRuleEnabled} from '../rules/service'
@@ -12,12 +12,13 @@ type Props = {
   error: string | null
   loading: boolean
   onRules: (rules: Rule[]) => void
+  onAddRule: (trigger: HTMLElement) => void
 }
 
 const errorText = (cause: unknown, fallback: string): string =>
   cause instanceof Error && cause.message ? cause.message : fallback
 
-export default function RulesSection({rules, error, loading, onRules}: Props) {
+export default function RulesSection({rules, error, loading, onRules, onAddRule}: Props) {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rowError, setRowError] = useState<{id: string; message: string} | null>(null)
 
@@ -47,24 +48,28 @@ export default function RulesSection({rules, error, loading, onRules}: Props) {
     }
   }
 
-  const focusForm = () => {
-    const input = document.getElementById('rule-value')
-
-    input?.scrollIntoView({block: 'center'})
-    input?.focus()
-  }
-
   return (
     <section className="mt-8 border-t border-border pt-5" aria-labelledby="rules-heading">
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <h2 id="rules-heading" className="text-lg">
           Rules
         </h2>
-        {rules.length > 0 ? (
-          <span className="text-xs text-muted-foreground">
-            {rules.length === 1 ? '1 rule' : `${rules.length} rules`}
-          </span>
-        ) : null}
+        <div className="flex items-center gap-3">
+          {rules.length > 0 ? (
+            <span className="text-xs text-muted-foreground">
+              {rules.length === 1 ? '1 rule' : `${rules.length} rules`}
+            </span>
+          ) : null}
+          <Button
+            id="add-rule-trigger"
+            type="button"
+            size="sm"
+            onClick={(event) => onAddRule(event.currentTarget)}
+          >
+            <Plus aria-hidden="true" />
+            Add a rule
+          </Button>
+        </div>
       </div>
 
       {error ? (
@@ -80,9 +85,14 @@ export default function RulesSection({rules, error, loading, onRules}: Props) {
       {!loading && !error && rules.length === 0 ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-y border-border py-5">
           <p className="text-sm text-muted-foreground">
-            No rules yet. Add one below, or use the popup on a site you want removed.
+            No rules yet. Add one, or use the popup on a site you want removed.
           </p>
-          <Button type="button" variant="outline" size="sm" onClick={focusForm}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={(event) => onAddRule(event.currentTarget)}
+          >
             Add a rule
           </Button>
         </div>

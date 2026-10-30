@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {getSettings, setPaused, setSweepWindowDays} from '../settings/service'
 import {
   disablePasscode,
@@ -9,6 +9,15 @@ import {
 import type {Settings} from '../storage/settings'
 import {Switch} from '../components/ui/switch'
 import {Button} from '../components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../components/ui/dialog'
 import {Input} from '../components/ui/input'
 import {Label} from '../components/ui/label'
 import {
@@ -53,10 +62,13 @@ export default function SettingsSection({version}: {version: string}) {
 
   const [locked, setLocked] = useState(false)
   const [asking, setAsking] = useState(false)
+  const [confirmOff, setConfirmOff] = useState(false)
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState<string | null>(null)
   const [code, setCode] = useState<string | null>(null)
   const [copyNote, setCopyNote] = useState<string | null>(null)
+  const passcodeSwitch = useRef<HTMLElement | null>(null)
+  const showCodeButton = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     let live = true
@@ -141,9 +153,11 @@ export default function SettingsSection({version}: {version: string}) {
       setLocked(false)
       setCode(null)
       setAsking(false)
+      setConfirmOff(false)
       setPin('')
     } catch (cause) {
       setPinError(errorText(cause, 'The passcode could not be turned off.'))
+      setConfirmOff(false)
     } finally {
       setBusy(null)
     }
@@ -272,6 +286,9 @@ export default function SettingsSection({version}: {version: string}) {
                 checked={locked || asking}
                 disabled={busy === 'passcode'}
                 aria-label="Passcode"
+                onClick={(event) => {
+                  passcodeSwitch.current = event.currentTarget
+                }}
                 onCheckedChange={(next) => {
                   setPinError(null)
                   setCopyNote(null)
@@ -283,10 +300,13 @@ export default function SettingsSection({version}: {version: string}) {
                     return
                   }
 
-                  setAsking(false)
-                  setPin('')
-                  setCode(null)
-                  void turnOff()
+                  if (!locked) {
+                    setAsking(false)
+                    setPin('')
+                    return
+                  }
+
+                  setConfirmOff(true)
                 }}
               />
             </div>
@@ -334,36 +354,13 @@ export default function SettingsSection({version}: {version: string}) {
                 size="sm"
                 className="mt-3"
                 disabled={busy === 'passcode'}
-                onClick={() => void showNewCode()}
+                onClick={(event) => {
+                  showCodeButton.current = event.currentTarget
+                  void showNewCode()
+                }}
               >
                 Show a new backup code
               </Button>
-            ) : null}
-
-            {code ? (
-              <div className="mt-3 rounded-lg border border-warn-foreground/25 bg-warn-surface px-4 py-3">
-                <p className="text-sm font-medium text-warn-foreground">Your backup code</p>
-                <p className="mt-1 text-xs text-warn-foreground">
-                  Save it now. It is the only way back in if you forget the passcode, and
-                  it is shown only this once.
-                </p>
-                <code className="mt-2 block select-all break-all font-mono text-base tracking-wider text-foreground">
-                  {code}
-                </code>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Button type="button" size="sm" onClick={() => void copyCode()}>
-                    Copy code
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={downloadCode}>
-                    Download .txt
-                  </Button>
-                </div>
-                {copyNote ? (
-                  <p className="mt-2 text-xs text-warn-foreground" role="status">
-                    {copyNote}
-                  </p>
-                ) : null}
-              </div>
             ) : null}
 
             {pinError ? (
@@ -379,6 +376,95 @@ export default function SettingsSection({version}: {version: string}) {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={code !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setCode(null)
+            setCopyNote(null)
+          }
+        }}
+      >
+        <DialogContent
+          hideClose
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            const target = showCodeButton.current ?? passcodeSwitch.current
+            target?.focus()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Your backup code</DialogTitle>
+            <DialogDescription className="text-warn-foreground">
+              Save it now. It is the only way back in if you forget the passcode, and it is
+              shown only this once.
+            </DialogDescription>
+          </DialogHeader>
+
+          <code className="block select-all break-all rounded-lg border border-warn-foreground/25 bg-warn-surface px-4 py-3 text-center font-mono text-base tracking-wider text-foreground">
+            {code}
+          </code>
+
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={() => void copyCode()}>
+              Copy code
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={downloadCode}>
+              Download .txt
+            </Button>
+          </div>
+
+          {copyNote ? (
+            <p className="text-xs text-warn-foreground" role="status">
+              {copyNote}
+            </p>
+          ) : null}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                I saved it
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmOff} onOpenChange={setConfirmOff}>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            passcodeSwitch.current?.focus()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Turn off the passcode?</DialogTitle>
+            <DialogDescription>
+              Opening this page will no longer ask for the passcode. Your rules and audit log
+              stay as they are.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={busy === 'passcode'}>
+                Keep it on
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy === 'passcode'}
+              onClick={() => void turnOff()}
+            >
+              {busy === 'passcode' ? 'Turning off' : 'Turn off'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

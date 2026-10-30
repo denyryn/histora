@@ -1,6 +1,15 @@
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {clearAudit, readAudit, type AuditEntry} from '../storage/audit'
 import {Button} from '../components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../components/ui/dialog'
 import {cn} from '../lib/utils'
 import {shortUrl, when} from '../ui/display'
 
@@ -16,8 +25,10 @@ export default function AuditSection({
 }) {
   const [entries, setEntries] = useState<AuditEntry[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [confirming, setConfirming] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [clearError, setClearError] = useState<string | null>(null)
   const [clearing, setClearing] = useState(false)
+  const clearTrigger = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     let live = true
@@ -39,14 +50,14 @@ export default function AuditSection({
 
   const clear = async () => {
     setClearing(true)
-    setError(null)
+    setClearError(null)
 
     try {
       await clearAudit()
       setEntries([])
-      setConfirming(false)
+      setConfirmOpen(false)
     } catch (cause) {
-      setError(errorText(cause, 'The audit log could not be cleared.'))
+      setClearError(errorText(cause, 'The audit log could not be cleared.'))
     } finally {
       setClearing(false)
     }
@@ -73,39 +84,19 @@ export default function AuditSection({
 
       {entries.length > 0 ? (
         <div className="mt-2 flex min-h-8 items-center justify-end gap-2">
-          {confirming ? (
-            <>
-              <p className="text-sm text-muted-foreground">Clear the whole log?</p>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={clearing}
-                onClick={() => void clear()}
-              >
-                Clear
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={clearing}
-                onClick={() => setConfirming(false)}
-              >
-                Keep
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="px-0 hover:bg-transparent"
-              onClick={() => setConfirming(true)}
-            >
-              Clear log
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="px-0 hover:bg-transparent"
+            onClick={(event) => {
+              clearTrigger.current = event.currentTarget
+              setClearError(null)
+              setConfirmOpen(true)
+            }}
+          >
+            Clear log
+          </Button>
         </div>
       ) : null}
 
@@ -158,6 +149,44 @@ export default function AuditSection({
           })}
         </ul>
       )}
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            clearTrigger.current?.focus()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Clear the audit log?</DialogTitle>
+            <DialogDescription>
+              Every recorded removal is deleted. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {clearError ? (
+            <p className="text-sm text-fail-foreground" role="alert">
+              {clearError}
+            </p>
+          ) : null}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={clearing}>
+                Keep
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={clearing}
+              onClick={() => void clear()}
+            >
+              {clearing ? 'Clearing' : 'Clear'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }
