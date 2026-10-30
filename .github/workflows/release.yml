@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check the tag matches the packaged version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version v$version"
+            exit 1
+          fi
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run release
+
+      - name: Verify the checksums
+        working-directory: dist/release
+        run: sha256sum -c SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: histora-${{ github.ref_name }}
+          path: dist/release/*
+          if-no-files-found: error
+
+      - name: Publish the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cat > release-notes.md <<'EOF'
+          Removes chosen pages from your browsing history.
+
+          **Chrome** — unzip `histora-__VERSION__-chrome.zip`, open `chrome://extensions`, turn on Developer mode, then Load unpacked.
+
+          **Firefox** — `histora-__VERSION__-firefox.xpi` is unsigned. Install it on Developer Edition, Nightly, or ESR with `xpinstall.signatures.required` set to false, or install it after the AMO signing pass.
+
+          **Checksums** — `sha256sum -c SHA256SUMS`.
+          EOF
+          sed -i "s/__VERSION__/$version/g" release-notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/release/histora-$version-chrome.zip" \
+            "dist/release/histora-$version-firefox.xpi" \
+            "dist/release/SHA256SUMS" \
+            --title "Histora $version" \
+            --notes-file release-notes.md

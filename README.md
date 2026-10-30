@@ -32,6 +32,22 @@ Histora removes chosen pages from your browsing history. Add a rule for a site, 
 
 After running `npm run release`, the hashes for the artifacts you built live in `dist/release/SHA256SUMS` and are printed alongside the artifact paths; the build embeds timestamps, so only the checksums against the files you actually downloaded are meaningful.
 
+## Releases
+
+CI runs `npm ci`, the type check, the tests, and a full two-target build on every push to `main` and every pull request (`.github/workflows/ci.yml`).
+
+Releases are tag-driven (`.github/workflows/release.yml`). A tag that disagrees with `package.json` fails the workflow before anything is built; otherwise it builds both targets, verifies `SHA256SUMS`, uploads the artifacts, and publishes the GitHub Release with the zip, the xpi, and the checksum file attached.
+
+```sh
+npm version patch                       # bumps package.json
+# set the same version in src/manifest.json — the release script fails on drift
+git commit -am "v0.1.1"
+git tag -a v0.1.1 -m "Histora 0.1.1"
+git push && git push origin v0.1.1
+```
+
+Running the Release workflow by hand (`workflow_dispatch`) does the same build and uploads the artifacts without publishing a release.
+
 ## Development
 
 ```sh
