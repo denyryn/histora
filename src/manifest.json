@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/chrome-manifest.json",
+  "chromium:manifest_version": 3,
+  "firefox:manifest_version": 3,
+  "version": "0.1.0",
+  "name": "Histora",
+  "description": "Removes chosen pages from your browsing history.",
+  "firefox:browser_specific_settings": {
+    "gecko": {
+      "id": "histora@denyryn.dev",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "background": {
+    "chromium:service_worker": "background.ts",
+    "firefox:scripts": ["background.ts"]
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "Histora"
+  },
+  "options_ui": {
+    "page": "options/index.html",
+    "open_in_tab": true
+  },
+  "permissions": ["history", "storage", "alarms", "activeTab"]
+}
