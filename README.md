@@ -32,6 +32,14 @@ Histora removes chosen pages from your browsing history. Add a rule for a site, 
 
 After running `npm run release`, the hashes for the artifacts you built live in `dist/release/SHA256SUMS` and are printed alongside the artifact paths; the build embeds timestamps, so only the checksums against the files you actually downloaded are meaningful.
 
+## Passcode lock
+
+Settings can require a passcode before the options page opens. Set it under **Settings → Passcode**: 4 to 12 digits, stored only as a PBKDF2-SHA256 hash.
+
+Setting a passcode shows a backup code once — copy it or download `histora-backup-code.txt` and keep it somewhere else. If you forget the passcode, choose **Use a backup code instead** on the lock screen; a correct code turns the passcode off so you can set a new one. Five wrong attempts pause entry for 30 seconds.
+
+This is a lock on the settings page, not encryption. Your rules and audit log stay readable in the extension's storage, and anyone who clears the extension's data removes the passcode with it.
+
 ## Releases
 
 CI runs `npm ci`, the type check, the tests, and a full two-target build on every push to `main` and every pull request (`.github/workflows/ci.yml`).

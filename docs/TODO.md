@@ -107,6 +107,16 @@ Post-hoc delete + sweep · Chrome + Firefox desktop, no Safari · four strict ru
 
 **Acceptance:** a clean browser profile installs both artifacts using only `README.md`, and checksums verify.
 
+## M7 — Options passcode
+
+- [x] Passcode switch and input in Settings; digits only, 4 to 12, hashed with PBKDF2-SHA256 and a per-install salt in `storage.local`
+- [x] Options page renders a lock screen until the passcode is right; rules and audit load only after unlock
+- [x] Backup code generated at set time, shown once, copyable and downloadable as `histora-backup-code.txt`; a correct code turns the passcode off
+- [x] Five wrong attempts start a 30-second cooldown that survives a reload
+- [x] The lock screen states the limit plainly: no encryption, and clearing extension data removes the passcode
+
+**Acceptance:** `tests/lock.test.ts` (10 cases) and `/tmp/opencode/e2e-lock.mjs` (18 checks: set, reload-lock, wrong/right passcode, wrong/right backup code, download contents, clipboard result, passcode off after recovery) pass against the built extension.
+
 ## Manual verification matrix (M5 and every release)
 
 Chrome column: `/tmp/opencode/e2e-matrix.mjs` against the built extension, 10 PASS / 0 FAIL / 5 SKIP. Firefox column: not run yet — needs the signed XPI path.
