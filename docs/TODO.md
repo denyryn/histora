@@ -127,6 +127,16 @@ Post-hoc delete + sweep · Chrome + Firefox desktop, no Safari · four strict ru
 
 **Acceptance:** `/tmp/opencode/e2e-modals.mjs` (23 checks) plus the updated `e2e-m4.mjs` (35) and `e2e-lock.mjs` (18) pass against the built extension.
 
+## M9 — Export and import rules
+
+- [x] `src/rules/export.ts` writes a readable JSON file: `version`, `exportedAt`, and `kind`/`value`/`enabled` per rule, in the order the list shows; internal ids and timestamps stay out
+- [x] `src/rules/import.ts` merges a file into the stored list: same validator as the add form, duplicates skipped, existing rules never removed or overwritten, disabled state preserved, 200-rule cap and sync budget reported instead of silently truncating
+- [x] One save per import and one bounded `sweep-now`, so imported rules clean up immediately and pause still applies
+- [x] Rules header: `Export` and `Import` beside `Add a rule`; the file picker is hidden, re-picking the same file works, and the result note (`Added 2 rules. 1 was already there.`) clears when the list changes
+- [x] `src/ui/download.ts` replaces the inline blob code shared with the backup-code download
+
+**Acceptance:** `/tmp/opencode/e2e-export.mjs` (9 checks) and `/tmp/opencode/e2e-import.mjs` (17 checks) against the built extension, plus 14 new unit tests (`tests/export.test.ts`, `tests/import.test.ts`).
+
 ## Manual verification matrix (M5 and every release)
 
 Chrome column: `/tmp/opencode/e2e-matrix.mjs` against the built extension, 10 PASS / 0 FAIL / 5 SKIP. Firefox column: not run yet — needs the signed XPI path.

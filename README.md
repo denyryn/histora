@@ -27,8 +27,8 @@ Histora removes chosen pages from your browsing history. Add a rule for a site, 
 
 | Artifact | Version | SHA-256 |
 |---|---|---|
-| `histora-0.1.0-chrome.zip` | 0.1.0 | *printed by `npm run release`* |
-| `histora-0.1.0-firefox.xpi` | 0.1.0 | *printed by `npm run release`* |
+| `histora-0.2.0-chrome.zip` | 0.2.0 | *printed by `npm run release`* |
+| `histora-0.2.0-firefox.xpi` | 0.2.0 | *printed by `npm run release`* |
 
 After running `npm run release`, the hashes for the artifacts you built live in `dist/release/SHA256SUMS` and are printed alongside the artifact paths; the build embeds timestamps, so only the checksums against the files you actually downloaded are meaningful.
 

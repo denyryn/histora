@@ -9,6 +9,7 @@ import {
 import type {Settings} from '../storage/settings'
 import {Switch} from '../components/ui/switch'
 import {Button} from '../components/ui/button'
+import {downloadText} from '../ui/download'
 import {
   Dialog,
   DialogClose,
@@ -193,13 +194,7 @@ export default function SettingsSection({version}: {version: string}) {
   const downloadCode = () => {
     if (!code) return
 
-    const url = URL.createObjectURL(new Blob([backupFile(code)], {type: 'text/plain'}))
-    const link = document.createElement('a')
-
-    link.href = url
-    link.download = 'histora-backup-code.txt'
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadText('histora-backup-code.txt', backupFile(code))
   }
 
   return (
