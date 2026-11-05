@@ -3,6 +3,7 @@ import {
   addRule,
   MAX_RULES,
   removeRule,
+  resolveRuleInput,
   setRuleEnabled,
   validateRule,
   type RuleInput
@@ -64,6 +65,35 @@ describe('validateRule', () => {
 
   it('keeps path case', () => {
     expect(value('slug', '/Blog/Secret')).toBe('/Blog/Secret')
+  })
+})
+
+describe('resolveRuleInput', () => {
+  it('reads a site as a domain rule', () => {
+    expect(resolveRuleInput('example.com')).toEqual({kind: 'domain', value: 'example.com'})
+    expect(resolveRuleInput('https://Example.com/blog')).toEqual({
+      kind: 'domain',
+      value: 'https://Example.com/blog'
+    })
+  })
+
+  it('reads an exact host as a subdomain rule', () => {
+    expect(resolveRuleInput('www.example.com')).toEqual({
+      kind: 'subdomain',
+      value: 'www.example.com'
+    })
+    expect(resolveRuleInput('127.0.0.1')).toEqual({kind: 'subdomain', value: '127.0.0.1'})
+  })
+
+  it('reads a plain word as a keyword rule, even when it is a public suffix', () => {
+    expect(resolveRuleInput('receipt')).toEqual({kind: 'keyword', value: 'receipt'})
+    expect(resolveRuleInput('porn')).toEqual({kind: 'keyword', value: 'porn'})
+    expect(resolveRuleInput('two words')).toEqual({kind: 'keyword', value: 'two words'})
+  })
+
+  it('sends a dotted public suffix to the domain validator instead of a keyword', () => {
+    expect(resolveRuleInput('co.uk')).toEqual({kind: 'domain', value: 'co.uk'})
+    expect(validateRule(resolveRuleInput('co.uk')).ok).toBe(false)
   })
 })
 

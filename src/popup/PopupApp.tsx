@@ -1,11 +1,13 @@
-import {useEffect, useState} from 'react'
-import {ExternalLink} from 'lucide-react'
+import {useEffect, useState, type FormEvent} from 'react'
+import {Plus, Settings} from 'lucide-react'
 import {api} from '../history/api'
 import {currentSite, type SiteContext} from '../rules/site'
 import {createRule, listRules} from '../rules/service'
 import {getSettings, setPaused} from '../settings/service'
+import {resolveRuleInput} from '../core/rules'
 import type {Rule, RuleKind} from '../core/match'
 import {Button} from '../components/ui/button'
+import {Input} from '../components/ui/input'
 import {Switch} from '../components/ui/switch'
 import {cleanupNote} from '../ui/cleanup'
 
@@ -20,6 +22,7 @@ export default function PopupApp() {
   const [paused, setPausedState] = useState(false)
   const [pauseError, setPauseError] = useState<string | null>(null)
   const [busy, setBusy] = useState<RuleKind | null>(null)
+  const [quickValue, setQuickValue] = useState('')
   const [actionError, setActionError] = useState<ActionError | null>(null)
   const [note, setNote] = useState<string | null>(null)
 
@@ -51,7 +54,7 @@ export default function PopupApp() {
 
   const version = api.runtime.getManifest().version
 
-  const addRule = async (kind: RuleKind, value: string) => {
+  const addRule = async (kind: RuleKind, value: string): Promise<boolean> => {
     setBusy(kind)
     setActionError(null)
     setNote(null)
@@ -69,14 +72,30 @@ export default function PopupApp() {
       }
 
       setNote(cleanupNote(result))
+
+      return true
     } catch (cause) {
       setActionError({
         kind,
         message: errorText(cause, 'The rule could not be added. Try again.')
       })
+
+      return false
     } finally {
       setBusy(null)
     }
+  }
+
+  const submitQuickRule = async (event: FormEvent) => {
+    event.preventDefault()
+
+    const input = quickValue.trim()
+
+    if (!input || busy !== null) return
+
+    const {kind, value} = resolveRuleInput(input)
+
+    if (await addRule(kind, value)) setQuickValue('')
   }
 
   const togglePause = async (next: boolean) => {
@@ -100,9 +119,24 @@ export default function PopupApp() {
 
   return (
     <main className="w-[340px] bg-background text-foreground">
-      <header className="flex items-baseline justify-between gap-3 px-4 pt-4">
-        <h1 className="font-display text-xl leading-tight">Histora</h1>
-        <span className="font-mono text-xs text-muted-foreground">{version}</span>
+      <header className="flex items-center justify-between gap-3 px-4 pt-4">
+        <div className="flex items-center gap-2.5">
+          <img src="/images/icon-32.png" alt="" className="size-5 rounded-[5px]" />
+          <div className="flex items-baseline gap-1.5">
+            <h1 className="font-display text-xl leading-tight">Histora</h1>
+            <span className="font-mono text-xs text-muted-foreground">{version}</span>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Open settings"
+          title="Open settings"
+          onClick={() => api.runtime.openOptionsPage()}
+        >
+          <Settings aria-hidden="true" />
+        </Button>
       </header>
 
       <section className="reveal mt-3 border-t border-border px-4 py-3" aria-labelledby="site-heading">
@@ -156,18 +190,6 @@ export default function PopupApp() {
                 </Button>
               ) : null}
             </div>
-
-            {actionError ? (
-              <p className="mt-2 text-sm text-fail-foreground" role="alert">
-                {actionError.message}
-              </p>
-            ) : null}
-
-            {note ? (
-              <p className="mt-2 text-sm text-ok-foreground" role="status">
-                {note}
-              </p>
-            ) : null}
           </>
         )}
 
@@ -180,6 +202,44 @@ export default function PopupApp() {
               Never keep this subdomain
             </Button>
           </div>
+        ) : null}
+      </section>
+
+      <section className="reveal mt-3 border-t border-border px-4 py-3" aria-label="Add a rule">
+        <form className="flex gap-2" onSubmit={(event) => void submitQuickRule(event)}>
+          <Input
+            value={quickValue}
+            placeholder="Domain or word to block"
+            aria-label="Domain or word to block"
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(event) => {
+              setQuickValue(event.target.value)
+              setActionError(null)
+              setNote(null)
+            }}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            aria-label="Add rule"
+            title="Add rule"
+            disabled={!quickValue.trim() || busy !== null}
+          >
+            <Plus aria-hidden="true" />
+          </Button>
+        </form>
+
+        {actionError ? (
+          <p className="mt-2 text-sm text-fail-foreground" role="alert">
+            {actionError.message}
+          </p>
+        ) : null}
+
+        {note ? (
+          <p className="mt-2 text-sm text-ok-foreground" role="status">
+            {note}
+          </p>
         ) : null}
       </section>
 
@@ -205,19 +265,6 @@ export default function PopupApp() {
           </p>
         ) : null}
       </section>
-
-      <footer className="border-t border-border px-4 py-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
-          onClick={() => api.runtime.openOptionsPage()}
-        >
-          <ExternalLink aria-hidden="true" />
-          Open settings
-        </Button>
-      </footer>
     </main>
   )
 }

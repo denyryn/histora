@@ -1,4 +1,4 @@
-import {getDomain} from 'tldts'
+import {getDomain, parse} from 'tldts'
 import {decodePath, hostFromInput, normalizePath} from './normalize'
 import type {Rule, RuleKind} from './match'
 
@@ -103,6 +103,35 @@ export function validateRule({kind, value}: RuleInput): Validation {
     default:
       return {ok: false, error: 'Unknown rule type.'}
   }
+}
+
+/**
+ * One field, two shapes: host-like input with a dot or port becomes a host
+ * rule, any other plain word becomes a keyword. A bare word is never read as
+ * a site even when it is a public suffix ("porn" is a word first).
+ */
+export function resolveRuleInput(value: string): RuleInput {
+  const raw = value.trim()
+  const keyword = {kind: 'keyword' as const, value: raw}
+
+  if (!raw || /\s/.test(raw)) return keyword
+
+  const host = hostFromInput(raw)
+
+  if (!host) return keyword
+
+  const site = getDomain(host)
+
+  if (site === host) return {kind: 'domain', value: raw}
+  if (site) return {kind: 'subdomain', value: raw}
+
+  const parsed = parse(host)
+
+  if (parsed.isIp) return {kind: 'subdomain', value: raw}
+  if (!/[.:]/.test(host)) return keyword
+  if (parsed.isIcann && parsed.publicSuffix === host) return {kind: 'domain', value: raw}
+
+  return {kind: 'subdomain', value: raw}
 }
 
 const sameRule = (a: Pick<Rule, 'kind' | 'value'>, b: Pick<Rule, 'kind' | 'value'>) =>
